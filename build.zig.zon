@@ -3,13 +3,13 @@
     .version = "0.6.0",
     .dependencies = .{
         .luau = .{
-            .url = "git+https://github.com/luau-lang/luau.git?ref=0.702#c836feb2450a074581010f84da2eadeea38a3d55",
-            .hash = "N-V-__8AAFTGpwCGECbgY1xtyv_VqnBz-6vqicDCwsPr3hl9",
+            .url = "git+https://github.com/luau-lang/luau.git?ref=0.705#93c83a46d7c6c1b040e58e82ef167340a7db1aef",
+            .hash = "N-V-__8AAKzorgD4dufP9bnGV5ElndKOZ9PdAsVVc4EOrCJE",
         },
     },
 
     .fingerprint = 0xceb8ffd87c49e0c3, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.15.2",
 
     .paths = .{
         "build.zig",
