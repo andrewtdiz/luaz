@@ -6,6 +6,7 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const lua_alignment = std.mem.Alignment.fromByteUnits(@max(@alignOf(std.c.max_align_t), 16));
 
 /// Lua allocator function that wraps a Zig allocator.
 ///
@@ -26,20 +27,37 @@ pub fn alloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) call
     // `old_mem` may have length zero, which makes a new allocation.
     // See https://ziglang.org/documentation/0.14.1/std/#std.mem.Allocator.realloc
     const allocator: *const Allocator = @ptrCast(@alignCast(ud.?));
+    const ret_addr = @returnAddress();
 
-    // Handle all cases with realloc: allocation, reallocation, and freeing
-    const old_slice = if (ptr) |old_ptr|
-        @as([*]u8, @ptrCast(old_ptr))[0..osize]
-    else
-        @as([]u8, &.{});
-
-    const new_slice = allocator.realloc(old_slice, nsize) catch return null;
-
-    // When nsize is 0, realloc acts as free and returns an empty slice
-    // Lua expects NULL in this case
     if (nsize == 0) {
+        if (ptr) |old_ptr| {
+            const old_slice = @as([*]u8, @ptrCast(old_ptr))[0..osize];
+            allocator.rawFree(old_slice, lua_alignment, ret_addr);
+        }
         return null;
     }
 
-    return @ptrCast(new_slice.ptr);
+    if (ptr == null) {
+        const new_ptr = allocator.rawAlloc(nsize, lua_alignment, ret_addr) orelse return null;
+        return @ptrCast(new_ptr);
+    }
+
+    const old_slice = @as([*]u8, @ptrCast(ptr.?))[0..osize];
+
+    if (allocator.rawResize(old_slice, lua_alignment, nsize, ret_addr)) {
+        return @ptrCast(old_slice.ptr);
+    }
+
+    if (allocator.rawRemap(old_slice, lua_alignment, nsize, ret_addr)) |new_ptr| {
+        return @ptrCast(new_ptr);
+    }
+
+    if (nsize < osize) {
+        return @ptrCast(old_slice.ptr);
+    }
+
+    const new_ptr = allocator.rawAlloc(nsize, lua_alignment, ret_addr) orelse return null;
+    @memcpy(new_ptr[0..osize], old_slice);
+    allocator.rawFree(old_slice, lua_alignment, ret_addr);
+    return @ptrCast(new_ptr);
 }

@@ -40,6 +40,7 @@
 //! ```
 
 const std = @import("std");
+const builtin = @import("builtin");
 const ArgsTuple = std.meta.ArgsTuple;
 const Allocator = std.mem.Allocator;
 
@@ -2348,7 +2349,7 @@ fn call(self: Self, args: anytype, comptime R: type, is_resume: bool) !Result(R)
         },
         else => {
             // Error occurred - return status with null result
-            if (self.state.isString(-1)) {
+            if (!builtin.is_test and self.state.isString(-1)) {
                 if (self.state.toString(-1)) |error_msg| {
                     std.debug.print("Lua error: {s}\n", .{error_msg});
                 }
