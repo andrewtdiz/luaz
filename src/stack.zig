@@ -89,8 +89,37 @@ pub fn push(state: *const State, value: anytype) void {
         .bool => {
             state.pushBoolean(value);
         },
-        .int, .comptime_int => {
-            state.pushInteger(@intCast(value));
+        .int => {
+            if (type_info.int.signedness == .unsigned) {
+                if (@bitSizeOf(T) <= @bitSizeOf(State.Integer)) {
+                    if (@bitSizeOf(T) <= 64) {
+                        const max_int: u64 = @intCast(std.math.maxInt(State.Integer));
+                        const value_u: u64 = @intCast(value);
+                        if (value_u <= max_int) {
+                            state.pushInteger(@intCast(value));
+                        } else {
+                            state.pushNumber(@floatFromInt(value));
+                        }
+                    } else {
+                        state.pushNumber(@floatFromInt(value));
+                    }
+                } else {
+                    state.pushNumber(@floatFromInt(value));
+                }
+            } else {
+                if (@bitSizeOf(T) <= @bitSizeOf(State.Integer)) {
+                    state.pushInteger(@intCast(value));
+                } else {
+                    state.pushNumber(@floatFromInt(value));
+                }
+            }
+        },
+        .comptime_int => {
+            if (value >= std.math.minInt(State.Integer) and value <= std.math.maxInt(State.Integer)) {
+                state.pushInteger(@intCast(value));
+            } else {
+                state.pushNumber(@floatFromInt(value));
+            }
         },
         .float, .comptime_float => {
             state.pushNumber(value);
@@ -461,7 +490,19 @@ pub fn checkArg(lua: Lua, index: i32, comptime T: type) T {
         .bool => {
             return lua.state.checkBoolean(index);
         },
-        .int, .comptime_int => {
+        .int => {
+            if (type_info.int.signedness == .unsigned) {
+                const lua_num = lua.state.checkNumber(index);
+                return @intFromFloat(lua_num);
+            }
+            if (@bitSizeOf(T) <= @bitSizeOf(State.Integer)) {
+                const lua_int = lua.state.checkInteger(index);
+                return @intCast(lua_int);
+            }
+            const lua_num = lua.state.checkNumber(index);
+            return @intFromFloat(lua_num);
+        },
+        .comptime_int => {
             const lua_int = lua.state.checkInteger(index);
             return @intCast(lua_int);
         },
