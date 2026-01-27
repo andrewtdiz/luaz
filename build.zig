@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) !void {
 
     const opts = .{
         .cover = b.option(bool, "coverage", "Generate test coverage (requires kcov)") orelse false,
-        .vector_size = b.option(u8, "vector-size", "Luau vector size (3 or 4, default 4)") orelse 4,
+        .vector_size = b.option(u8, "vector-size", "Luau vector size (3 or 4, default 3)") orelse 3,
     };
 
     // Validate vector size
@@ -67,6 +67,7 @@ pub fn build(b: *std.Build) !void {
 
         try addSrcFiles(b, mod, luau_dep, "CodeGen/src", flags);
 
+        mod.addCMacro("LUA_USE_LONGJMP", "1");
         mod.addCMacro("LUA_VECTOR_SIZE", b.fmt("{d}", .{opts.vector_size}));
         mod.addIncludePath(luau_dep.path("CodeGen/include"));
         mod.addIncludePath(luau_dep.path("Common/include"));

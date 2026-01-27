@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Default `-Dvector-size` is now 3 (required for Luau codegen/JIT support). Use `-Dvector-size=4` for 4-component vectors (disables codegen).
+
 ## [0.6.0] - 2025-12-03
 
 ### Changed

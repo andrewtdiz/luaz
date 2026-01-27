@@ -233,6 +233,11 @@ if (lua.enable_codegen()) {
 }
 ```
 
+Notes:
+
+- Codegen support requires building with `-Dvector-size=3` (default). Using `-Dvector-size=4` disables codegen.
+- On x64, codegen also requires an AVX-capable CPU.
+
 Relevant compiler options live in `Compiler.Opts`:
 
 - `opt_level`: 0..2
