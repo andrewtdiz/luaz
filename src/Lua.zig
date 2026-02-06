@@ -2264,6 +2264,11 @@ pub inline fn isThread(self: Self) bool {
     return self.state.lua != main_thread.lua;
 }
 
+pub const CallError = struct {
+    message: []const u8,
+    stack: []const u8,
+};
+
 /// Result of a Lua function call containing status and return value.
 pub fn Result(comptime R: type) type {
     return union(enum) {
@@ -2273,6 +2278,7 @@ pub fn Result(comptime R: type) type {
         yield: ?R,
         /// Debug break occurred during execution.
         debugBreak,
+        err: CallError,
     };
 }
 
@@ -2283,7 +2289,7 @@ fn makeResult(comptime R: type, exec_status: State.Status, result: ?R) !Result(R
         .yield => Result(R){ .yield = result },
         .break_debug => Result(R).debugBreak,
         .errmem => error.OutOfMemory,
-        else => error.Runtime,
+        else => unreachable,
     };
 }
 
@@ -2347,16 +2353,26 @@ fn call(self: Self, args: anytype, comptime R: type, is_resume: bool) !Result(R)
 
             return makeResult(R, exec_status, result);
         },
-        else => {
-            // Error occurred - return status with null result
-            if (!builtin.is_test and self.state.isString(-1)) {
-                if (self.state.toString(-1)) |error_msg| {
-                    std.debug.print("Lua error: {s}\n", .{error_msg});
-                }
-            }
+        .break_debug => {
             self.state.pop(1);
+            return Result(R).debugBreak;
+        },
+        .errmem => {
+            self.state.pop(1);
+            return error.OutOfMemory;
+        },
+        else => {
+            const message_z = self.state.tolString(-1, null);
+            const message: []const u8 = message_z;
+            self.state.setField(State.REGISTRYINDEX, "__luaz_last_call_error_message");
 
-            return makeResult(R, exec_status, null);
+            self.state.traceback(self.state, message_z, 1);
+            const stack_z = self.state.toString(-1) orelse "";
+            const stack_trace: []const u8 = stack_z;
+            self.state.setField(State.REGISTRYINDEX, "__luaz_last_call_error_stack");
+
+            self.state.pop(1);
+            return Result(R){ .err = .{ .message = message, .stack = stack_trace } };
         },
     }
 }

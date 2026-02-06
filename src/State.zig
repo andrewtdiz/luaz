@@ -1238,6 +1238,11 @@ pub inline fn where(self: Self, lvl: i32) void {
     c.luaL_where(self.lua, lvl);
 }
 
+pub inline fn traceback(self: Self, L1: Self, msg: ?[:0]const u8, level: i32) void {
+    const msg_ptr: ?[*:0]const u8 = if (msg) |m| m.ptr else null;
+    c.luaL_traceback(self.lua, L1.lua, msg_ptr, level);
+}
+
 /// Convert value to string and push
 pub inline fn tolString(self: Self, idx: i32, len: ?*usize) [:0]const u8 {
     const result = c.luaL_tolstring(self.lua, idx, len);
